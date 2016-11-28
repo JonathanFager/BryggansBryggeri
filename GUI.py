@@ -1,84 +1,237 @@
-# IMPORTS
-import numpy as np
 import matplotlib
 matplotlib.use("TkAgg")
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2TkAgg
 from matplotlib.figure import Figure
-from matplotlib import pyplot as plt
-from matplotlib.widgets import Button
+import matplotlib.animation as animation
+from matplotlib import style
+import numpy as np
+import tkinter as tk
+from tkinter import ttk
+# IMPORTS
 import serial
-# import csv
-import Tkinter
+import csv
+import time
 
-# arduinoSerial = serial.Serial('/dev/ttyACM1',9600) #CHECK!
-t,T1, T2 = [0],[50],[50] #Initialise time and temp lists.
-TempLow = -10
-TempHigh = 110
-minWidth = 60
-measureOn = True
 
-def updateAxis():	
-	if t[-1]<=minWidth:
-		plt.axis([0,minWidth,-10,110])
+
+
+
+HEADLINE= ("Verdana", 30)
+LARGE_FONT = ("Verdana", 20)
+style.use("ggplot")
+
+# LOOP for continuous running
+def animate(i):
+	global t, T1, T2
+	alpha = 0.1
+	#Brownian motion for testing
+	if measureOn:
+		# t.append(t[-1]+1)
+		# T1.append(T1[-1]+np.random.standard_normal()-alpha*(T1[-1]-getRefTemp()))
+		# refTempList.append(getRefTemp())
+		# updateGraph()
+		if(arduinoSerial.inWaiting()>0):
+		# # READ DATA FROM ARDUINO TO LIST OF FLOATS
+		# # TODO: Check length of read line, if wrong throw error
+			dataRaw = arduinoSerial.readline().decode().strip('\r\n')
+			print(dataRaw)
+			dataList = dataRaw.split(",")
+			dataNum = [float(i) for i in dataList]
+			# # STORE TIMESTAMP AND TEMPERATURES
+			t.append(t[-1]+1)
+			# t.append(dataNum[0]/1000)
+			T1.append(dataNum[1])
+			T2.append(dataNum[2])
+			refTempList.append(getRefTemp())
+			updateGraph()
+		
+def getRefTemp():
+	return refTemp[brewStep]
+
+# Manually setting reference temperature
+def setRefTemp(newSetpoint):
+	global refTemp
+	refTemp = newSetpoint
+
+def getReceptStr(i):
+	ReceptStr = ['','','','','','','']
+	ReceptStr[0]= "Recept: English bitter"
+	ReceptStr[1]="1. Värm vatten till " + str(refTemp[0]) +"\u00b0C"
+	ReceptStr[2]="2. Mäska i " + str(timers[0]) + "min"
+	ReceptStr[3]="3. Värm till " + str(refTemp[1]) +"\u00b0C" 
+	ReceptStr[4]="4. Vila i " + str(timers[1]) + " min"
+	ReceptStr[5]="5. Mäska ur med 2l. vatten. Värm till " + str(refTemp[2]) +"\u00b0C"
+	ReceptStr[6]="6. Koka i  " + str(timers[2]) +" min"
+	return ReceptStr[i]
+
+def getTimer():
+	timer = timers[brewStep]
+	timeStr=['','','']
+	for i in range(len(timers)):
+		Seconds = 60-(t[-1]-timeInStep[i-1])%60
+		if Seconds == 60:
+			Seconds = "00"
+		totMinPassed = np.floor(t[-1]/60+timeInStep[i])
+		Minutes = int(timers[i] - totMinPassed)-1
+		timeStr[i] = str(Minutes)+":"+str(Seconds)
+	return timeStr
+
+def updateGraph():
+	minWidth = 120
+	a.clear()
+	a.set_ylim(0,110)
+	if t[-1]<minWidth:
+		a.set_xlim(0,t[-1]+10)
+		a.text(0,110,"T1: " + str(np.round_(T1[-1])),fontsize=16)
+		a.text(0,115,"T2: " + str(np.round_(T2[-1])),fontsize=16)
+		a.text(0,120,"Timer: " + getTimer()[brewStep],fontsize=16)
 	else:
-		plt.axis([t[-1]-minWidth,t[-1]+1,-10,110])
+		a.set_xlim(t[-1]-minWidth,t[-1]+10)
+		a.text(t[-1]-minWidth,110,"T1: " + str(np.round_(T1[-1])),fontsize=16)
+		a.text(t[-1]-minWidth,115,"T2: " + str(np.round_(T2[-1])),fontsize=16)
+		a.text(t[-1]-minWidth,120,"Timer: " + getTimer()[brewStep],fontsize=16)
+	a.plot(t,T1,'r')
+	a.plot(t,T2,'b')
+	a.plot(t,refTempList,'k')
+	a.set_axis_bgcolor(beige)
+
+def resetGraph():
+	global t, T1, T2, refTempList, brewStep
+	t = [0]
+	T1 = [T1[-1]]
+	T2 = [T2[-1]]
+	brewStep = 0
+	refTempList = [getRefTemp()]
+	a.clear()
 
 def switchMeasureMode():
 	global measureOn
 	measureOn = not measureOn
 
-# fig,ax = plt.subplots()
-# axnext = plt.axes([0, minWidth, TempLow, TempHigh])
-#plt.ion()
-plt.plot(t, T1,'r*-', label='Temp1')
-plt.plot(t,T2,'b', label='Temp2 (Tejp)')
-plt.xlabel('Time (s)')
-plt.ylabel('Temperature (C)')
-plt.legend()
-updateAxis()
+def next():
+	global brewStep, timeInStep
+	if brewStep == len(refTemp)-1:
+		timeInStep = [0,0,0]
+		brewStep = 0
+		print('Brewsteps finished')
+	else: 
+		timeInStep[brewStep] = t[-1]
+		brewStep += 1
 
-while measureOn:
-	#if(arduinoSerial.inWaiting()>0):
-		# READ DATA FROM ARDUINO TO LIST OF FLOATS
-		# TODO: Check length of read line, if wrong throw error
-		# dataRaw = arduinoSerial.readline()
-		# print dataRaw
-		# dataList = dataRaw.split(",")
-		# dataNum = [float(i) for i in dataList]
-		# # # STORE TIMESTAMP AND TEMPERATURES
-		# t.append(t[-1] + dataNum[0]/1000)
-		# T1.append(dataNum[1])
-		# T2.append(dataNum[2])
-
-		# TESTING DATA (UNI RAND)
-		t.append(t[-1]+1)
-		T1.append(T1[-1]+np.random.standard_normal())
-		T2.append(T2[-1]+np.random.standard_normal())
-		plt.plot(t, T1,'r-', label='Top')
-		plt.plot(t,T2,'b', label='Bottom')
-		plt.pause(1)
-		updateAxis()
-
-	# no write commands until the arduino is ready
-	# get time from arduino or python?
-
-plt.show(block='True')
+def writeToFile():
+	writeTempList = [t, T1]
+	writeTempList = list(map(list, zip(*writeTempList))) #Transpose list for readability
+	date = (time.strftime("%y%m%d"))
+	with open("./Brewdata/ESB"+date+".csv", "w") as f:
+		writer = csv.writer(f)
+		writer.writerows(writeTempList)
 
 
+class BryggansApp(tk.Tk):
+
+    def __init__(self, *args, **kwargs):
+        
+        tk.Tk.__init__(self, *args, **kwargs)
+
+        #tk.Tk.iconbitmap(self, default="clienticon.ico")
+        tk.Tk.wm_title(self, "Bryggans Bryggeri")
+        
+        
+        container = tk.Frame(self)
+        container.pack(side="top", fill="both", expand = True)
+        container.grid_rowconfigure(0, weight=1)
+        container.grid_columnconfigure(0, weight=1)
+
+        self.frames = {}
+
+        # for F in (StartPage, Recipes):
+
+        #     frame = F(container, self)
+
+        #     self.frames[F] = frame
+
+        #     frame.grid(row=0, column=0, sticky="nsew")
+        frame = StartPage(container, self)
+        self.frames[StartPage] = frame
+        frame.grid(row=0, column=1, sticky="nswe")
+        frame.configure(bg=beige)
+        self.show_frame(StartPage)
+
+        frame = Recipes(container, self)
+        self.frames[Recipes] = frame
+        frame.grid(row=0, column=0, sticky="nswe")
+        self.show_frame(Recipes)
+
+    def show_frame(self, cont):
+
+        frame = self.frames[cont]
+        frame.tkraise()
+
+        
+class StartPage(tk.Frame):
+
+    def __init__(self, parent, controller):
+        tk.Frame.__init__(self, parent)
+        label = tk.Label(self, text="Bryggning", font=LARGE_FONT)
+        label.pack(side="top")
+
+        resetButton = ttk.Button(self, text="Reset",command=resetGraph)
+        resetButton.pack(side="top", anchor="w", fill="x")
+
+        toggleMeasureButton = ttk.Button(self, text="Pause/Unpuase", command=switchMeasureMode)
+        toggleMeasureButton.pack(side="top", anchor="w",fill="x")
+
+        nextButton = ttk.Button(self, text="Next",command=next)
+        nextButton.pack(side="top", anchor="w",fill="x")
+
+        nextButton = ttk.Button(self, text="Save",command=writeToFile)
+        nextButton.pack(side="top", anchor="w",fill="x")
+
+        canvas = FigureCanvasTkAgg(f, self)
+        canvas.show()
+        # canvas.get_tk_widget().gre
+        canvas.get_tk_widget().pack(side=tk.LEFT,fill=tk.BOTH, expand=True)
+
+        # toolbar = NavigationToolbar2TkAgg(canvas, self)
+        # toolbar.update()
+        # canvas._tkcanvas.pack(side=tk.BOTTOM, fill=tk.BOTH, expand=True)
 
 
-# , label='Bottom'
+class Recipes(tk.Frame):
 
-# # WRITE TO FILE 
-# for item in thelist:
-#   thefile.write("%s\n" % item)'
+	def __init__(self, parent, controller):
+		tk.Frame.__init__(self, parent)
+		for i in range(6):
+			if i==0:
+				alignment = 'center'
+				label = tk.Label(self, text=getReceptStr(i), font=HEADLINE,anchor=alignment)
+				label.pack(pady=10,padx=10)
+			else:
+				alignment = 'w'
+				label = tk.Label(self, text=getReceptStr(i), font=LARGE_FONT,anchor=alignment)
+				label.pack(pady=10,padx=10)
 
-# with open('test.csv', 'wb') as f:
-#     writer = csv.writer(f)
+arduinoSerial = serial.Serial('/dev/ttyACM0',9600) #CHECK!
+f = Figure()
+a = f.add_subplot(111)
+t = [0]
+T1 = [15]
+T2 = [50]
+refTemp = [75,80,100]
+timers = [60,10,60]
+timeInStep = [0,0,0]
+brewStep = 0
+refTempList = [getRefTemp()]
+measureOn = False
+beige = '#CABBA0'
+# print(dir(a))
+# TODO Database recipes, getLiters.
+app = BryggansApp()
+app.geometry("1280x780")
+app.tk_setPalette(background=beige, foreground='black',
+               activeBackground='black', activeForeground=beige)
+ani = animation.FuncAnimation(f, animate, interval=1000)
+app.mainloop()
 
-# t = range(10)
-# T = np.sin(t)
-# tmpRows = zip(t,T)
-# print tmpRows[1]
-# for row in tmpRows:
-#     writer.writerow(row)
+# "Recept: Epo IPA \n 1. Värm vatten till " + str(refTemp[0]) +"\u00b0C \n 2. Mäska i " + str(timers[0]) + "min \n 3. Värm till " + str(refTemp[1]) +"\u00b0C\n 4. Mäska i " + str(timers[1]) + " min \n 5. Värm till " + str(refTemp[2]) +"\u00b0C \n 6. Koka i  " + str(timers[2]) +" min"
+  
