@@ -12,10 +12,6 @@ import serial
 import csv
 import time
 
-
-
-
-
 HEADLINE= ("Verdana", 30)
 LARGE_FONT = ("Verdana", 20)
 style.use("ggplot")
@@ -23,9 +19,11 @@ style.use("ggplot")
 # LOOP for continuous running
 def animate(i):
 	global t, T1, T2
-	alpha = 0.1
-	#Brownian motion for testing
+	
+	
 	if measureOn:
+		# #Brownian motion for testing
+		#alpha = 0.1
 		# t.append(t[-1]+1)
 		# T1.append(T1[-1]+np.random.standard_normal()-alpha*(T1[-1]-getRefTemp()))
 		# refTempList.append(getRefTemp())
@@ -55,14 +53,22 @@ def setRefTemp(newSetpoint):
 
 def getReceptStr(i):
 	ReceptStr = ['','','','','','','']
-	ReceptStr[0]= "Recept: English bitter"
-	ReceptStr[1]="1. Värm vatten till " + str(refTemp[0]) +"\u00b0C"
-	ReceptStr[2]="2. Mäska i " + str(timers[0]) + "min"
-	ReceptStr[3]="3. Värm till " + str(refTemp[1]) +"\u00b0C" 
-	ReceptStr[4]="4. Vila i " + str(timers[1]) + " min"
-	ReceptStr[5]="5. Mäska ur med 2l. vatten. Värm till " + str(refTemp[2]) +"\u00b0C"
-	ReceptStr[6]="6. Koka i  " + str(timers[2]) +" min"
+	# ReceptStr[0]= "Recept: English bitter"
+	# ReceptStr[1]="1. Värm vatten till " + str(refTemp[0]) +"\u00b0C"
+	# ReceptStr[2]="2. Mäska i " + str(timers[0]) + "min"
+	# ReceptStr[3]="3. Värm till " + str(refTemp[1]) +"\u00b0C" 
+	# ReceptStr[4]="4. Vila i " + str(timers[1]) + " min"
+	# ReceptStr[5]="5. Mäska ur med 2l. vatten. Värm till " + str(refTemp[2]) +"\u00b0C"
+	# ReceptStr[6]="6. Koka i  " + str(timers[2]) +" min"
+
+	# Christmas Edition
+	ReceptStr[0] = "GLÖGG"
+	ReceptStr[1] = "Heat with caution to 77\u00b0C"
+	ReceptStr[2] = "Ethanol boils at 78\u00b0C"
+	ReceptStr[3] = "Stop heating when a light smoke rises"
 	return ReceptStr[i]
+	
+
 
 def getTimer():
 	timer = timers[brewStep]
@@ -93,7 +99,7 @@ def updateGraph():
 	a.plot(t,T1,'r')
 	a.plot(t,T2,'b')
 	a.plot(t,refTempList,'k')
-	a.set_axis_bgcolor(beige)
+	a.set_axis_bgcolor('white')
 
 def resetGraph():
 	global t, T1, T2, refTempList, brewStep
@@ -154,7 +160,7 @@ class BryggansApp(tk.Tk):
         frame = StartPage(container, self)
         self.frames[StartPage] = frame
         frame.grid(row=0, column=1, sticky="nswe")
-        frame.configure(bg=beige)
+        frame.configure(bg='white')
         self.show_frame(StartPage)
 
         frame = Recipes(container, self)
@@ -201,6 +207,16 @@ class Recipes(tk.Frame):
 
 	def __init__(self, parent, controller):
 		tk.Frame.__init__(self, parent)
+		# for i in range(6):
+		# 	if i==0:
+		# 		alignment = 'center'
+		# 		label = tk.Label(self, text=getReceptStr(i), font=HEADLINE,anchor=alignment)
+		# 		label.pack(pady=10,padx=10)
+		# 	else:
+		# 		alignment = 'w'
+		# 		label = tk.Label(self, text=getReceptStr(i), font=LARGE_FONT,anchor=alignment)
+		# 		label.pack(pady=10,padx=10)
+		# # Christmas Edition
 		for i in range(6):
 			if i==0:
 				alignment = 'center'
@@ -210,8 +226,27 @@ class Recipes(tk.Frame):
 				alignment = 'w'
 				label = tk.Label(self, text=getReceptStr(i), font=LARGE_FONT,anchor=alignment)
 				label.pack(pady=10,padx=10)
+			
+			
+		myButton = tk.Button(self,borderwidth=0)
+		photoimage = tk.PhotoImage(file="Graphics/christmas1.png")
+		photoimage.zoom(1)
+		myButton.image = photoimage
+		myButton.configure(image=photoimage)
+		myButton.pack(pady=100,padx=100)
+		# christmasCanvas = tk.Canvas(self)
+		# christmas_image = tk.PhotoImage(file ="Graphics/christmas.png")
+		# #Resizing
+		# christmas_image = christmas_image.subsample(1, 1) #See below for more: 
+		# #Shrinks the image by a factor of 2 effectively
+		# christmasCanvas.create_image(0, 0, image = christmas_image, anchor = "nw")
+		# self.christmas_image = christmas_image 
+		# christmasCanvas.pack()
 
-arduinoSerial = serial.Serial('/dev/ttyACM0',9600) #CHECK!
+
+# # Configure arduino port communication. Make sure port adress is correct
+#arduinoSerial = serial.Serial('/dev/ttyACM0',9600) #CHECK!
+
 f = Figure()
 a = f.add_subplot(111)
 t = [0]
@@ -224,12 +259,14 @@ brewStep = 0
 refTempList = [getRefTemp()]
 measureOn = False
 beige = '#CABBA0'
+green = '#008200'
+red = '#FF0000'
 # print(dir(a))
 # TODO Database recipes, getLiters.
 app = BryggansApp()
 app.geometry("1280x780")
-app.tk_setPalette(background=beige, foreground='black',
-               activeBackground='black', activeForeground=beige)
+app.tk_setPalette(background='white', foreground=red,
+               activeBackground='white', activeForeground=red)
 ani = animation.FuncAnimation(f, animate, interval=1000)
 app.mainloop()
 
