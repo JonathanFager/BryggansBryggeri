@@ -19,16 +19,15 @@ style.use("ggplot")
 # LOOP for continuous running
 def animate(i):
 	global t, T1, T2
-	
-	
 	if measureOn:
 		# #Brownian motion for testing
-		#alpha = 0.1
-		# t.append(t[-1]+1)
-		# T1.append(T1[-1]+np.random.standard_normal()-alpha*(T1[-1]-getRefTemp()))
-		# refTempList.append(getRefTemp())
-		# updateGraph()
-		if(arduinoSerial.inWaiting()>0):
+		alpha = 0.01
+		t1 = np.round(time.time()-t0,0)
+		t.append(t1)
+		T1.append(T1[-1]+np.random.standard_normal()-alpha*(T1[-1]-getRefTemp()))
+		refTempList.append(getRefTemp())
+		updateGraph()
+		if(False):#arduinoSerial.inWaiting()>0):
 		# # READ DATA FROM ARDUINO TO LIST OF FLOATS
 		# # TODO: Check length of read line, if wrong throw error
 			dataRaw = arduinoSerial.readline().decode().strip('\r\n')
@@ -89,20 +88,22 @@ def updateGraph():
 	if t[-1]<minWidth:
 		a.set_xlim(0,t[-1]+10)
 		a.text(0,110,"T1: " + str(np.round_(T1[-1])),fontsize=16)
-		a.text(0,115,"T2: " + str(np.round_(T2[-1])),fontsize=16)
+		#a.text(0,115,"T2: " + str(np.round_(T2[-1])),fontsize=16)
 		a.text(0,120,"Timer: " + getTimer()[brewStep],fontsize=16)
 	else:
 		a.set_xlim(t[-1]-minWidth,t[-1]+10)
 		a.text(t[-1]-minWidth,110,"T1: " + str(np.round_(T1[-1])),fontsize=16)
-		a.text(t[-1]-minWidth,115,"T2: " + str(np.round_(T2[-1])),fontsize=16)
+		#a.text(t[-1]-minWidth,115,"T2: " + str(np.round_(T2[-1])),fontsize=16)
 		a.text(t[-1]-minWidth,120,"Timer: " + getTimer()[brewStep],fontsize=16)
 	a.plot(t,T1,'r')
-	a.plot(t,T2,'b')
+	#a.plot(t,T2,'b')
 	a.plot(t,refTempList,'k')
 	a.set_axis_bgcolor('white')
 
 def resetGraph():
-	global t, T1, T2, refTempList, brewStep
+	global t0,t, T1, T2, refTempList, brewStep, totMinPassed
+	t0 = time.time()
+	totMinPassed = 0
 	t = [0]
 	T1 = [T1[-1]]
 	T2 = [T2[-1]]
@@ -111,8 +112,9 @@ def resetGraph():
 	a.clear()
 
 def switchMeasureMode():
-	global measureOn
+	global measureOn, t0
 	measureOn = not measureOn
+	t0 = time.time()
 
 def next():
 	global brewStep, timeInStep
@@ -184,7 +186,7 @@ class StartPage(tk.Frame):
         resetButton = ttk.Button(self, text="Reset",command=resetGraph)
         resetButton.pack(side="top", anchor="w", fill="x")
 
-        toggleMeasureButton = ttk.Button(self, text="Pause/Unpuase", command=switchMeasureMode)
+        toggleMeasureButton = ttk.Button(self, text="Pause/Unpause", command=switchMeasureMode)
         toggleMeasureButton.pack(side="top", anchor="w",fill="x")
 
         nextButton = ttk.Button(self, text="Next",command=next)
@@ -252,7 +254,7 @@ a = f.add_subplot(111)
 t = [0]
 T1 = [15]
 T2 = [50]
-refTemp = [75,80,100]
+refTemp = [77,20,77]
 timers = [60,10,60]
 timeInStep = [0,0,0]
 brewStep = 0
